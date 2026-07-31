@@ -703,10 +703,12 @@ async function handleChat(promptText, isRegenerate = false) {
 
     try {
         let response;
+        // Strip imageUrl field — API only accepts role + content
+        const apiHistory = chatHistory.map(({ role, content }) => ({ role, content }));
         if (currentImageUrl) {
             response = await puter.ai.chat(fullPrompt, currentImageUrl, { model: selectedModel });
         } else {
-            response = await puter.ai.chat(chatHistory, { model: selectedModel });
+            response = await puter.ai.chat(apiHistory, { model: selectedModel });
         }
 
         removeMessageUI(loadingId);
