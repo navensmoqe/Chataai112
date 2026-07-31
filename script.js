@@ -32,13 +32,59 @@ const SUGGESTIONS = [
 ];
 
 const MODEL_LABELS = {
+    // GPT-5.6
+    'gpt-5.6-sol': 'GPT-5.6 Sol',
+    'gpt-5.6-sol-pro': 'GPT-5.6 Sol Pro',
+    'gpt-5.6-terra': 'GPT-5.6 Terra',
+    'gpt-5.6-terra-pro': 'GPT-5.6 Terra Pro',
+    'gpt-5.6-luna': 'GPT-5.6 Luna',
+    'gpt-5.6-luna-pro': 'GPT-5.6 Luna Pro',
+    // GPT-5.5
+    'gpt-5.5': 'GPT-5.5',
+    'gpt-5.5-pro': 'GPT-5.5 Pro',
+    // GPT-5.4
+    'gpt-5.4-nano': 'GPT-5.4 Nano',
+    'gpt-5.4-mini': 'GPT-5.4 Mini',
+    'gpt-5.4': 'GPT-5.4',
+    'gpt-5.4-pro': 'GPT-5.4 Pro',
+    // GPT-5.x Other
+    'gpt-5.3-chat': 'GPT-5.3 Chat',
+    'gpt-5.2': 'GPT-5.2',
+    'gpt-5.2-chat': 'GPT-5.2 Chat',
+    'gpt-5.2-pro': 'GPT-5.2 Pro',
+    'gpt-5.1': 'GPT-5.1',
+    'gpt-5.1-chat-latest': 'GPT-5.1 Chat Latest',
+    'gpt-5': 'GPT-5',
+    'gpt-5-mini': 'GPT-5 Mini',
+    'gpt-5-nano': 'GPT-5 Nano',
+    'gpt-5-chat-latest': 'GPT-5 Chat Latest',
+    // Codex
+    'gpt-5.3-codex': 'GPT-5.3 Codex',
+    'gpt-5.2-codex': 'GPT-5.2 Codex',
+    'gpt-5.1-codex': 'GPT-5.1 Codex',
+    'gpt-5.1-codex-mini': 'GPT-5.1 Codex Mini',
+    'gpt-5.1-codex-max': 'GPT-5.1 Codex Max',
+    'gpt-5-codex': 'GPT-5 Codex',
+    // GPT-4.x
+    'gpt-4.1': 'GPT-4.1',
+    'gpt-4.1-mini': 'GPT-4.1 Mini',
+    'gpt-4.1-nano': 'GPT-4.1 Nano',
+    'gpt-4.5-preview': 'GPT-4.5 Preview',
     'gpt-4o': 'GPT-4o',
     'gpt-4o-mini': 'GPT-4o Mini',
-    'gpt-4.5-preview': 'GPT-4.5',
-    'claude-sonnet-4-5': 'Claude Sonnet',
-    'claude-opus-4-5': 'Claude Opus',
-    'gemini-2.0-flash': 'Gemini Flash',
-    'gemini-2.5-pro': 'Gemini Pro'
+    // OpenAI Reasoning
+    'o1': 'o1',
+    'o1-mini': 'o1 Mini',
+    'o1-pro': 'o1 Pro',
+    'o3': 'o3',
+    'o3-mini': 'o3 Mini',
+    'o4-mini': 'o4 Mini',
+    // Claude
+    'claude-sonnet-4-5': 'Claude Sonnet 4.5',
+    'claude-opus-4-5': 'Claude Opus 4.5',
+    // Gemini
+    'gemini-2.0-flash': 'Gemini 2.0 Flash',
+    'gemini-2.5-pro': 'Gemini 2.5 Pro',
 };
 
 // Multiple chat sessions
@@ -55,7 +101,13 @@ window.onload = function() {
     const savedTheme = localStorage.getItem('suna_theme') || 'dark';
     if (savedTheme === 'light') {
         document.body.classList.add('light-mode');
-        document.getElementById('themeText').textContent = 'وضع الليل';
+        const themeBtn = document.getElementById('themeToggleBtn');
+        if (themeBtn) {
+            const icon = themeBtn.querySelector('.material-symbols-outlined');
+            if (icon) icon.textContent = 'dark_mode';
+        }
+        const themeText = document.getElementById('themeText');
+        if (themeText) themeText.textContent = 'وضع الليل';
     }
 
     // Load or create session
@@ -172,9 +224,15 @@ function renderSessionsUI() {
 
 function toggleTheme() {
     const isLight = document.body.classList.toggle('light-mode');
-    const themeText = document.getElementById('themeText');
     localStorage.setItem('suna_theme', isLight ? 'light' : 'dark');
-    themeText.textContent = isLight ? 'وضع الليل' : 'وضع النهار';
+    const themeText = document.getElementById('themeText');
+    if (themeText) themeText.textContent = isLight ? 'وضع الليل' : 'وضع النهار';
+    // Update icon
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) {
+        const icon = themeBtn.querySelector('.material-symbols-outlined');
+        if (icon) icon.textContent = isLight ? 'dark_mode' : 'light_mode';
+    }
 }
 
 // ----------------------------
@@ -964,12 +1022,12 @@ function openLightbox(src) {
     const lb = document.getElementById('lightbox');
     const img = document.getElementById('lightboxImg');
     img.src = src;
-    lb.classList.add('active');
+    lb.classList.add('open');
     document.body.style.overflow = 'hidden';
 }
 
 function closeLightbox() {
-    document.getElementById('lightbox').classList.remove('active');
+    document.getElementById('lightbox').classList.remove('open');
     document.body.style.overflow = '';
 }
 
