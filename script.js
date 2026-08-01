@@ -436,54 +436,100 @@ function handleFileSelect(event) {
 
     // ---- PDF ----
     if (isPdf) {
-        nameEl.textContent = `📄 ${file.name} (جاري استخراج النص...)`;
+        nameEl.textContent = `📄 ${file.name} (جاري القراءة...)`;
         thumb.style.display = 'none';
         bar.style.display = 'flex';
+        sendBtn.disabled = true;
 
         const reader = new FileReader();
         reader.onload = async function(e) {
             try {
-                // Set PDF.js worker
-                if (window.pdfjsLib) {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc =
-                        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                if (!window.pdfjsLib) throw new Error('PDF.js غير محمّل');
 
-                    const typedArray = new Uint8Array(e.target.result);
-                    const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+                pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-                    let fullText = '';
-                    const totalPages = pdf.numPages;
+                const typedArray = new Uint8Array(e.target.result);
+                const pdf        = await pdfjsLib.getDocument({ data: typedArray }).promise;
+                const totalPages = pdf.numPages;
+                const MAX_PAGES  = 20; // limit for OCR speed
+                const pagesToProcess = Math.min(totalPages, MAX_PAGES);
 
-                    for (let i = 1; i <= totalPages; i++) {
-                        const page    = await pdf.getPage(i);
-                        const content = await page.getTextContent();
-                        const pageText = content.items.map(item => item.str).join(' ');
-                        fullText += `\n--- صفحة ${i} من ${totalPages} ---\n${pageText}`;
-                    }
+                // ---- Step 1: Try normal text extraction ----
+                nameEl.textContent = `📄 ${file.name} · استخراج النص... (${pagesToProcess} صفحة)`;
+                let fullText  = '';
+                let hasText   = false;
 
-                    if (!fullText.trim()) {
-                        showToast('⚠️ الملف لا يحتوي على نص قابل للاستخراج');
-                        nameEl.textContent = `📄 ${file.name} (صورة/ممسوح ضوئياً)`;
-                    } else {
-                        attachedFile = {
-                            name: file.name,
-                            type: 'application/pdf',
-                            data: fullText,
-                            isImage: false,
-                            isPdf: true,
-                            pages: totalPages
-                        };
-                        nameEl.textContent = `📄 ${file.name} · ${totalPages} صفحة`;
-                        sendBtn.disabled = false;
-                        showToast(`✅ تم استخراج ${totalPages} صفحة`);
-                    }
-                } else {
-                    throw new Error('PDF.js غير محمّل');
+                for (let i = 1; i <= pagesToProcess; i++) {
+                    const page    = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    const pageText = content.items.map(item => item.str).join(' ').trim();
+                    if (pageText) { hasText = true; }
+                    fullText += `\n--- صفحة ${i} من ${totalPages} ---\n${pageText || '(لا نص)'}`;
+                    nameEl.textContent = `📄 ${file.name} · استخراج ${i}/${pagesToProcess}...`;
                 }
+
+                // ---- Step 2: If scanned → OCR with Tesseract ----
+                if (!hasText) {
+                    if (!window.Tesseract) {
+                        showToast('⚠️ مكتبة OCR غير متاحة');
+                        nameEl.textContent = `📄 ${file.name} (ممسوح - لا يمكن استخراج النص)`;
+                        return;
+                    }
+
+                    showToast('🔍 ملف ممسوح - جاري التعرف على النص بالذكاء الاصطناعي...');
+                    fullText = '';
+
+                    const worker = await Tesseract.createWorker('ara+eng', 1, {
+                        logger: () => {}
+                    });
+
+                    for (let i = 1; i <= pagesToProcess; i++) {
+                        nameEl.textContent = `🔍 OCR صفحة ${i}/${pagesToProcess}... قد يستغرق دقيقة`;
+
+                        // Render page to canvas
+                        const page     = await pdf.getPage(i);
+                        const viewport = page.getViewport({ scale: 2.0 });
+                        const canvas   = document.createElement('canvas');
+                        canvas.width   = viewport.width;
+                        canvas.height  = viewport.height;
+                        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+                        // OCR the canvas
+                        const { data: { text } } = await worker.recognize(canvas);
+                        fullText += `\n--- صفحة ${i} من ${totalPages} ---\n${text.trim() || '(لا نص)'}`;
+                    }
+
+                    await worker.terminate();
+
+                    if (totalPages > MAX_PAGES) {
+                        showToast(`⚠️ تمت قراءة أول ${MAX_PAGES} صفحة من أصل ${totalPages}`);
+                        fullText += `\n\n[ملاحظة: تمت معالجة أول ${MAX_PAGES} صفحة فقط من أصل ${totalPages}]`;
+                    } else {
+                        showToast(`✅ OCR مكتمل - ${pagesToProcess} صفحة`);
+                    }
+                }
+
+                // ---- Save result ----
+                attachedFile = {
+                    name: file.name,
+                    type: 'application/pdf',
+                    data: fullText,
+                    isImage: false,
+                    isPdf: true,
+                    pages: totalPages,
+                    wasOCR: !hasText
+                };
+
+                const label = !hasText ? '🔍 OCR' : '📝 نص';
+                nameEl.textContent = `📄 ${file.name} · ${totalPages} صفحة · ${label}`;
+                sendBtn.disabled = false;
+
             } catch (err) {
-                console.error('PDF error:', err);
-                showToast('❌ تعذّر قراءة ملف PDF');
-                nameEl.textContent = `📄 ${file.name} (خطأ في القراءة)`;
+                console.error('PDF/OCR error:', err);
+                showToast('❌ خطأ في قراءة الملف: ' + err.message);
+                nameEl.textContent = `📄 ${file.name} (فشل القراءة)`;
+                sendBtn.disabled = false;
             }
         };
         reader.readAsArrayBuffer(file);
