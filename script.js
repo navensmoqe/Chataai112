@@ -707,12 +707,12 @@ async function handleChat(promptText, isRegenerate = false) {
         const apiHistory = chatHistory.map(({ role, content }) => ({ role, content }));
 
         if (currentImageUrl) {
-            // Use correct content array format with 'input_image' type
+            // Standard OpenAI vision format
             const imageMsg = {
                 role: 'user',
                 content: [
-                    { type: 'input_image', image_url: currentImageUrl },
-                    { type: 'input_text',  text: fullPrompt || 'ماذا ترى في هذه الصورة؟' }
+                    { type: 'image_url', image_url: { url: currentImageUrl } },
+                    { type: 'text', text: fullPrompt || 'ماذا ترى في هذه الصورة؟' }
                 ]
             };
             response = await puter.ai.chat([imageMsg], { model: selectedModel });
