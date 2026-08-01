@@ -425,15 +425,74 @@ function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    const isImage = file.type.startsWith('image/');
+    const bar      = document.getElementById('filePreviewBar');
+    const thumb    = document.getElementById('filePreviewThumb');
+    const nameEl   = document.getElementById('filePreviewName');
+    const sendBtn  = document.getElementById('sendBtn');
 
+    const isImage  = file.type.startsWith('image/');
+    const isPdf    = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+    // ---- PDF ----
+    if (isPdf) {
+        nameEl.textContent = `📄 ${file.name} (جاري استخراج النص...)`;
+        thumb.style.display = 'none';
+        bar.style.display = 'flex';
+
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                // Set PDF.js worker
+                if (window.pdfjsLib) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc =
+                        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+                    const typedArray = new Uint8Array(e.target.result);
+                    const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+
+                    let fullText = '';
+                    const totalPages = pdf.numPages;
+
+                    for (let i = 1; i <= totalPages; i++) {
+                        const page    = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        const pageText = content.items.map(item => item.str).join(' ');
+                        fullText += `\n--- صفحة ${i} من ${totalPages} ---\n${pageText}`;
+                    }
+
+                    if (!fullText.trim()) {
+                        showToast('⚠️ الملف لا يحتوي على نص قابل للاستخراج');
+                        nameEl.textContent = `📄 ${file.name} (صورة/ممسوح ضوئياً)`;
+                    } else {
+                        attachedFile = {
+                            name: file.name,
+                            type: 'application/pdf',
+                            data: fullText,
+                            isImage: false,
+                            isPdf: true,
+                            pages: totalPages
+                        };
+                        nameEl.textContent = `📄 ${file.name} · ${totalPages} صفحة`;
+                        sendBtn.disabled = false;
+                        showToast(`✅ تم استخراج ${totalPages} صفحة`);
+                    }
+                } else {
+                    throw new Error('PDF.js غير محمّل');
+                }
+            } catch (err) {
+                console.error('PDF error:', err);
+                showToast('❌ تعذّر قراءة ملف PDF');
+                nameEl.textContent = `📄 ${file.name} (خطأ في القراءة)`;
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+    }
+
+    // ---- Image ----
+    const reader = new FileReader();
     reader.onload = function(e) {
         attachedFile = { name: file.name, type: file.type, data: e.target.result, isImage };
-
-        const bar = document.getElementById('filePreviewBar');
-        const thumb = document.getElementById('filePreviewThumb');
-        const nameEl = document.getElementById('filePreviewName');
 
         bar.style.display = 'flex';
         nameEl.textContent = file.name;
@@ -445,7 +504,7 @@ function handleFileSelect(event) {
             thumb.style.display = 'none';
         }
 
-        document.getElementById('sendBtn').disabled = false;
+        sendBtn.disabled = false;
     };
 
     if (isImage) reader.readAsDataURL(file);
@@ -679,9 +738,13 @@ async function handleChat(promptText, isRegenerate = false) {
         lastUserPrompt = promptText;
     }
 
-    // Handle text files
+    // Handle text files & PDFs
     if (attachedFile && !attachedFile.isImage) {
-        fullPrompt = `[محتوى الملف: ${attachedFile.name}]\n${attachedFile.data}\n\n[طلب المستخدم]: ${promptText || 'يرجى تحليل وتلخيص هذا الملف.'}`;
+        if (attachedFile.isPdf) {
+            fullPrompt = `[📄 ملف PDF: "${attachedFile.name}" - ${attachedFile.pages} صفحة]\n\n${attachedFile.data}\n\n[طلب المستخدم]: ${promptText || 'يرجى تحليل وتلخيص هذا الملف بشكل شامل.'}`;
+        } else {
+            fullPrompt = `[محتوى الملف: ${attachedFile.name}]\n${attachedFile.data}\n\n[طلب المستخدم]: ${promptText || 'يرجى تحليل وتلخيص هذا الملف.'}`;
+        }
     }
 
     // Handle images

@@ -30,6 +30,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- Custom Styles -->
     <link rel="stylesheet" href="style.css">
     <!-- Puter.js -->
@@ -231,7 +233,7 @@
 
                     <!-- Main Input Box -->
                     <div class="input-box" id="inputBox">
-                        <input type="file" id="fileInput" style="display:none;" accept="image/*, .txt, .py, .js, .json, .html, .css, .md, .csv" onchange="handleFileSelect(event)">
+                        <input type="file" id="fileInput" style="display:none;" accept="image/*, .pdf, .txt, .py, .js, .json, .html, .css, .md, .csv, .xlsx, .docx" onchange="handleFileSelect(event)">
 
                         <div class="input-row">
                             <button class="attach-btn" title="إرفاق ملف" onclick="document.getElementById('fileInput').click()" aria-label="إرفاق ملف">
