@@ -705,8 +705,17 @@ async function handleChat(promptText, isRegenerate = false) {
         let response;
         // Strip imageUrl field — API only accepts role + content
         const apiHistory = chatHistory.map(({ role, content }) => ({ role, content }));
+
         if (currentImageUrl) {
-            response = await puter.ai.chat(fullPrompt, currentImageUrl, { model: selectedModel });
+            // Use correct content array format with 'input_image' type
+            const imageMsg = {
+                role: 'user',
+                content: [
+                    { type: 'input_image', image_url: currentImageUrl },
+                    { type: 'input_text',  text: fullPrompt || 'ماذا ترى في هذه الصورة؟' }
+                ]
+            };
+            response = await puter.ai.chat([imageMsg], { model: selectedModel });
         } else {
             response = await puter.ai.chat(apiHistory, { model: selectedModel });
         }
