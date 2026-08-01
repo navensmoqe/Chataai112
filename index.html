@@ -4,7 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Suna Ai - مساعدك الذكي للدردشة وتوليد الصور بالعربية">
+
+    <!-- PWA: Theme & Status Bar -->
     <meta name="theme-color" content="#61dbb4">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Suna Ai">
+    <meta name="application-name" content="Suna Ai">
+    <meta name="msapplication-TileColor" content="#131313">
+    <meta name="msapplication-TileImage" content="icon-192.png">
+
+    <!-- PWA: Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+
+    <!-- PWA: Manifest -->
+    <link rel="manifest" href="manifest.json">
     <title>Suna Ai - مساعدك الذكي</title>
 
     <!-- Google Fonts -->
@@ -62,6 +81,10 @@
 
             <!-- Sidebar Footer -->
             <div class="sidebar-footer">
+                <button class="sidebar-footer-btn install-btn" id="installBtn" onclick="installApp()" style="display:none;">
+                    <span class="material-symbols-outlined">install_mobile</span>
+                    تثبيت التطبيق
+                </button>
                 <button class="sidebar-footer-btn" onclick="exportChat()">
                     <span class="material-symbols-outlined">download</span>
                     تصدير المحادثة
@@ -246,5 +269,50 @@
     <div class="toast" id="toast"></div>
 
     <script src="script.js"></script>
+
+    <!-- PWA: Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+
+        // PWA: Show install prompt
+        let deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show install button if it exists
+            const installBtn = document.getElementById('installBtn');
+            if (installBtn) installBtn.style.display = 'flex';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            const installBtn = document.getElementById('installBtn');
+            if (installBtn) installBtn.style.display = 'none';
+            // Show confirmation
+            setTimeout(() => {
+                const toast = document.getElementById('toast');
+                if (toast) {
+                    toast.textContent = '✅ تم تثبيت Suna Ai بنجاح!';
+                    toast.classList.add('show');
+                    setTimeout(() => toast.classList.remove('show'), 3000);
+                }
+            }, 500);
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(result => {
+                    deferredPrompt = null;
+                });
+            }
+        }
+    </script>
 </body>
 </html>
