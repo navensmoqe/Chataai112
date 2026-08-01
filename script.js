@@ -489,22 +489,70 @@ function handleFileSelect(event) {
         return;
     }
 
-    // ---- Image ----
+    // ---- Image: compress before sending ----
     const reader = new FileReader();
     reader.onload = function(e) {
-        attachedFile = { name: file.name, type: file.type, data: e.target.result, isImage };
-
-        bar.style.display = 'flex';
-        nameEl.textContent = file.name;
+        const rawDataUrl = e.target.result;
 
         if (isImage) {
-            thumb.src = e.target.result;
+            // Show preview immediately
+            bar.style.display = 'flex';
+            thumb.src = rawDataUrl;
             thumb.style.display = 'block';
-        } else {
-            thumb.style.display = 'none';
-        }
+            nameEl.textContent = `🖼️ ${file.name} (جاري الضغط...)`;
 
-        sendBtn.disabled = false;
+            // Compress image using Canvas (max 1024px, 85% quality)
+            const img = new Image();
+            img.onload = function() {
+                const MAX = 1024;
+                let { width, height } = img;
+
+                // Scale down if larger than MAX
+                if (width > MAX || height > MAX) {
+                    if (width > height) {
+                        height = Math.round((height * MAX) / width);
+                        width = MAX;
+                    } else {
+                        width = Math.round((width * MAX) / height);
+                        height = MAX;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width  = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const compressed = canvas.toDataURL('image/jpeg', 0.85);
+                const sizeKB = Math.round((compressed.length * 3) / 4 / 1024);
+
+                attachedFile = {
+                    name: file.name,
+                    type: 'image/jpeg',
+                    data: compressed,
+                    isImage: true
+                };
+
+                nameEl.textContent = `🖼️ ${file.name} · ${width}×${height}px · ~${sizeKB}KB`;
+                sendBtn.disabled = false;
+                showToast(`✅ الصورة جاهزة (${sizeKB}KB)`);
+            };
+            img.onerror = function() {
+                // Fallback: use raw if compression fails
+                attachedFile = { name: file.name, type: file.type, data: rawDataUrl, isImage: true };
+                nameEl.textContent = file.name;
+                sendBtn.disabled = false;
+            };
+            img.src = rawDataUrl;
+
+        } else {
+            attachedFile = { name: file.name, type: file.type, data: rawDataUrl, isImage: false };
+            bar.style.display = 'flex';
+            nameEl.textContent = file.name;
+            thumb.style.display = 'none';
+            sendBtn.disabled = false;
+        }
     };
 
     if (isImage) reader.readAsDataURL(file);
