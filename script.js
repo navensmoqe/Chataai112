@@ -425,13 +425,14 @@ function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const bar      = document.getElementById('filePreviewBar');
-    const thumb    = document.getElementById('filePreviewThumb');
-    const nameEl   = document.getElementById('filePreviewName');
-    const sendBtn  = document.getElementById('sendBtn');
+    const bar     = document.getElementById('filePreviewBar');
+    const thumb   = document.getElementById('filePreviewThumb');
+    const nameEl  = document.getElementById('filePreviewName');
+    const sendBtn = document.getElementById('sendBtn');
 
-    const isImage  = file.type.startsWith('image/');
-    const isPdf    = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const ext     = file.name.split('.').pop().toLowerCase();
+    const isImage = file.type.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp'].includes(ext);
+    const isPdf   = file.type === 'application/pdf' || ext === 'pdf';
 
     // ---- PDF ----
     if (isPdf) {
